@@ -63,7 +63,7 @@ from toyota_na.vehicle.vehicle_generations.seventeen_cy import SeventeenCYToyota
 from .patch_seventeen_cy import SeventeenCYToyotaVehicle
 toyota_na.vehicle.vehicle_generations.seventeen_cy.SeventeenCYToyotaVehicle = SeventeenCYToyotaVehicle
 
-from toyota_na.exceptions import AuthError, LoginError
+from toyota_na.exceptions import AuthError
 from toyota_na.vehicle.base_vehicle import RemoteRequestCommand, ToyotaVehicle
 
 #Patch get_vehicles
@@ -242,11 +242,11 @@ async def update_vehicles_status(hass: HomeAssistant, client: ToyotaOneClient, e
         hass.config_entries.async_update_entry(entry, data=entry_data)
         return vehicles
     except AuthError as e:
-        try:
-            client.auth.login(entry.data["username"], entry.data["password"])
-        except LoginError:
-            _LOGGER.exception("Error logging in")
-            raise ConfigEntryAuthFailed(e) from e
+        # The refresh token was rejected. A headless login can't answer the
+        # one-time-code prompt Toyota now sends, so ask the user to
+        # reauthenticate (config_flow.async_step_reauth -> user -> otp).
+        _LOGGER.warning("Toyota rejected the stored tokens; reauthentication required")
+        raise ConfigEntryAuthFailed(e) from e
     except Exception as e:
         _LOGGER.exception("Error fetching data")
         raise UpdateFailed(e) from e
